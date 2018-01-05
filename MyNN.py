@@ -21,7 +21,7 @@ class MyNN:
 
     def backward(self, A, Y):
         if self.cost == 'Cross entropy':
-            self.co = (np.divide(Y, A) - np.divide(1-Y, 1-A))
+            self.co = -(np.divide(Y, A) - np.divide(1-Y, 1-A))
         exec(self.b_script)
         self.clear_cache()
 
@@ -34,23 +34,26 @@ class MyNN:
             self.body['W'+str(self.n_of_layers)] = np.random.randn(size, self.current_size)/np.sqrt(self.current_size)
             self.body['b'+str(self.n_of_layers)] = np.zeros((size,1))
             # Forward pass update
+            self.f_script=self.f_script+'#Layer '+str(self.n_of_layers)+': Linear of size ({},{})'.format(size, self.current_size)+' with '+activation+' activation.\n'
             self.f_script=self.f_script+'self.co=np.dot(self.body["W'+str(self.n_of_layers)+'"],self.co)+self.body["b'+str(self.n_of_layers)+'"]\n'
             self.f_script=self.f_script+'self.cache["Z'+str(self.n_of_layers)+'"]=self.co\n'
             if activation == 'Sigmoid':
-                self.f_script=self.f_script+'self.co=1/(1+np.exp(self.co))\n'
+                self.f_script=self.f_script+'self.co=1/(1+np.exp(-self.co))\n'
             elif activation == 'ReLU':
                 self.f_script=self.f_script+'self.co[self.co<0]=0\n'
             else:
                 print('Something wrong with activation')
             self.f_script = self.f_script + 'self.cache["A' + str(self.n_of_layers) + '"]=self.co\n'
             #Backward pass update
-            self.b_script = 'self.co=np.dot(self.body["W' + str(self.n_of_layers) + '"].T,self.co)\n' + self.b_script
+            if self.n_of_layers != 1:
+                self.b_script = 'self.co=np.dot(self.body["W' + str(self.n_of_layers) + '"].T,self.co)\n' + self.b_script
             self.b_script='self.grads["dW'+str(self.n_of_layers)+'"]=(1/self.batch_size)*np.dot(self.co, self.cache["A'+str(self.n_of_layers-1)+'"].T)\n'+self.b_script
             self.b_script='self.grads["db'+str(self.n_of_layers)+'"]=(1/self.batch_size)*np.sum(self.co, axis=1, keepdims=True)\n'+self.b_script
             if activation == 'Sigmoid':
                 self.b_script='self.co=self.cache["A'+str(self.n_of_layers)+'"]*(1-self.cache["A'+str(self.n_of_layers)+'"])*self.co\n'+self.b_script
             elif activation == 'ReLU':
-                self.b_script='self.co[self.cache["A'+str(self.n_of_layers)+'"]<0]=0\n'+self.b_script
+                self.b_script='self.co[self.cache["Z'+str(self.n_of_layers)+'"]<=0]=0\n'+self.b_script
+            self.b_script='#Layer ' + str(self.n_of_layers) + ': Linear of size ({},{})'.format(size,self.current_size) + ' with ' + activation + ' activation.\n'+self.b_script
             self.current_size = size
 
         else:
@@ -79,7 +82,7 @@ class MyNN:
             self.cache['A'+str(i)] = None
             self.cache['Z'+str(i)] = None
 
-    def optimize(self, X, Y, lr, num_iterations, report_cost):
+    def optimize(self, X, Y, lr, num_iterations, report_cost=True, report_cost_freq=100):
         self.lr = lr
         self.batch_size=X.shape[1]
         self.cache['A0'] = X
