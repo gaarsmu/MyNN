@@ -9,14 +9,14 @@ for i in range(1000):
         Y[0,i] = 1
 
 nn = MyNN.MyNN(2)
-nn.add(4, 'ReLU')
+nn.add(4, 'Tanh')
 nn.add(1, 'Sigmoid')
 nn.compile('Cross entropy')
 
 print(nn.f_script)
 print(nn.b_script)
 #print(nn.body)
-nn.optimize(X,Y,lr=0.1, num_iterations=10000,report_cost=True,report_cost_freq=500)
+#nn.optimize(X,Y,lr=0.1, num_iterations=10000,report_cost=True,report_cost_freq=500)
 #print(nn.body)
 #plt.scatter(X[0,:], X[1,:], c=Y, cmap=plt.cm.Spectral)
 #plt.show()

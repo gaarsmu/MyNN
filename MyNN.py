@@ -41,6 +41,8 @@ class MyNN:
                 self.f_script=self.f_script+'self.co=1/(1+np.exp(-self.co))\n'
             elif activation == 'ReLU':
                 self.f_script=self.f_script+'self.co[self.co<0]=0\n'
+            elif activation == 'Tanh':
+                self.f_script=self.f_script+'self.co=np.tanh(self.co)\n'
             else:
                 print('Something wrong with activation')
             self.f_script = self.f_script + 'self.cache["A' + str(self.n_of_layers) + '"]=self.co\n'
@@ -53,7 +55,9 @@ class MyNN:
                 self.b_script='self.co=self.cache["A'+str(self.n_of_layers)+'"]*(1-self.cache["A'+str(self.n_of_layers)+'"])*self.co\n'+self.b_script
             elif activation == 'ReLU':
                 self.b_script='self.co[self.cache["Z'+str(self.n_of_layers)+'"]<=0]=0\n'+self.b_script
-            self.b_script='#Layer ' + str(self.n_of_layers) + ': Linear of size ({},{})'.format(size,self.current_size) + ' with ' + activation + ' activation.\n'+self.b_script
+            elif activation == 'Tanh':
+                self.b_script='self.co=(1-np.power(self.cache["A'+str(self.n_of_layers)+'"],2))*self.co\n'+self.b_script
+            self.b_script='#Layer ' + str(self.n_of_layers) + ' backprop: Linear of size ({},{})'.format(size,self.current_size) + ' with ' + activation + ' activation.\n'+self.b_script
             self.current_size = size
 
         else:
@@ -91,5 +95,5 @@ class MyNN:
             cost = self.compute_cost(Z, Y)
             self.backward(Z, Y)
             self.update_parameters()
-            if report_cost and i % 100 == 0:
+            if report_cost and i % report_cost_freq == 0:
                 print('Cost after {} iterations: {}'.format(i, cost))
