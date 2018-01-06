@@ -5,6 +5,8 @@ class MyNN:
         self.body = {}
         self.cache = {}
         self.grads = {}
+        self.v = {}
+        self.s = {}
         self.current_size = input_size
         self.n_of_layers=0
         self.f_script = ''
@@ -13,6 +15,7 @@ class MyNN:
         self.co = None
         self.lr = 0.01
         self.batch_size = 1
+        self.number_of_updates = 0
 
     def forward(self, x):
         self.co=x
@@ -63,9 +66,28 @@ class MyNN:
         else:
             print('Model is compiled already')
 
-    def compile(self, cost):
+    def compile(self, cost, optimizer, beta=0.9, beta2=0.999, epsilon= 1e-8):
         self.compiled = True
         self.cost = cost
+        self.optimizer = optimizer
+        if optimizer == 'GD' or optimizer == 'Gradient descend':
+            pass
+        elif optimizer == 'GDwM':
+            self.beta = beta
+            for l in range(1, self.n_of_layers+1):
+                self.v['dW'+str(l)] = np.zeros(self.body['W'+str(l)].shape)
+                self.v['db'+str(l)] = np.zeros(self.body['b'+str(l)].shape)
+        elif optimizer == 'Adam':
+            self.beta = beta
+            self.beta2 = beta2
+            self.epsilon = epsilon
+            for l in range(1, self.n_of_layers+1):
+                self.v['dW'+str(l)] = np.zeros(self.body['W'+str(l)].shape)
+                self.v['db'+str(l)] = np.zeros(self.body['b'+str(l)].shape)
+                self.s['dW'+str(l)] = np.zeros(self.body['W'+str(l)].shape)
+                self.s['db'+str(l)] = np.zeros(self.body['b'+str(l)].shape)
+        else:
+            print("We don't have this optimizer yet")
 
 
     def compute_cost(self, Z, Y):
@@ -76,24 +98,67 @@ class MyNN:
         return cost
 
     def update_parameters(self):
-        if True:
+        if self.optimizer == 'GD' or self.optimizer == 'Gradient descend':
             for i in range(1, self.n_of_layers+1):
                 self.body['W'+str(i)] -= self.lr*self.grads['dW'+str(i)]
                 self.body['b'+str(i)] -= self.lr*self.grads['db'+str(i)]
+        elif self.optimizer == 'GDwM':
+            for i in range(1, self.n_of_layers+1):
+                self.v['dW'+str(i)] = self.beta*self.v['dW'+str(i)] + (1-self.beta)*self.grads['dW'+str(i)]
+                self.v['db'+str(i)] = self.beta*self.v['db'+str(i)] + (1-self.beta)*self.grads['db'+str(i)]
+                self.body['W'+str(i)] -= self.lr*self.v['dW'+str(i)]
+                self.body['b'+str(i)] -= self.lr*self.v['db'+str(i)]
+        elif self.optimizer == "Adam":
+            for i in range(1, self.n_of_layers+1):
+                self.v['dW'+str(i)] = self.beta*self.v['dW'+str(i)] + (1-self.beta)*self.grads['dW'+str(i)]
+                self.v['db'+str(i)] = self.beta*self.v['db'+str(i)] + (1-self.beta)*self.grads['db'+str(i)]
+                v_corrected_dW = self.v['dW'+str(i)]/(1-self.beta**self.number_of_updates)
+                v_corrected_db = self.v['db'+str(i)]/(1-self.beta**self.number_of_updates)
+                self.s['dW'+str(i)] = self.beta2*self.s['dW'+str(i)] + (1-self.beta2)*(self.grads['dW'+str(i)]**2)
+                self.s['db'+str(i)] = self.beta2*self.s['db'+str(i)] + (1-self.beta2)*(self.grads['db'+str(i)]**2)
+                s_corrected_dW = self.s['dW'+str(i)]/(1-self.beta2**self.number_of_updates)
+                s_corrected_db = self.s['db'+str(i)]/(1-self.beta2**self.number_of_updates)
+                self.body['W'+str(i)] -= self.lr*(v_corrected_dW/(np.sqrt(s_corrected_dW)+self.epsilon))
+                self.body['b'+str(i)] -= self.lr*(v_corrected_db/(np.sqrt(s_corrected_db)+self.epsilon))
+
 
     def clear_cache(self):
         for i in range(1, self.n_of_layers+1):
             self.cache['A'+str(i)] = None
             self.cache['Z'+str(i)] = None
 
-    def optimize(self, X, Y, lr, num_iterations, report_cost=True, report_cost_freq=100):
+    def optimize(self, X, Y, lr, num_epochs, report_cost=True, report_cost_freq=100,
+                 batch_size=None):
         self.lr = lr
-        self.batch_size=X.shape[1]
-        self.cache['A0'] = X
-        for i in range(0, num_iterations+1):
-            Z = self.forward(X)
-            cost = self.compute_cost(Z, Y)
-            self.backward(Z, Y)
-            self.update_parameters()
-            if report_cost and i % report_cost_freq == 0:
-                print('Cost after {} iterations: {}'.format(i, cost))
+        if batch_size is None:
+            self.batch_size=X.shape[1]
+        else:
+            self.batch_size=batch_size
+        for i in range(1, num_epochs+1):
+            if batch_size is None:
+                self.cache['A0'] = X
+                Z = self.forward(X)
+                cost = self.compute_cost(Z, Y)
+                self.backward(Z, Y)
+                self.number_of_updates += 1
+                self.update_parameters()
+                if (report_cost and i % report_cost_freq == 0) or i == 1:
+                    print('Cost after {} iterations: {}'.format(i, cost))
+            else:
+                permutations = list(np.random.permutation(X.shape[1]))
+                num_complete_batches = int(np.floor(X.shape[1]/batch_size))
+                cost = 0
+                for k in range(0, num_complete_batches+1):
+                    indexes = permutations[k*batch_size:(k+1)*batch_size]
+                    mb_X=X[:,indexes]
+                    mb_Y=Y[:,indexes].reshape(self.current_size, -1)
+                    self.cache['A0'] = mb_X
+                    mb_Z = self.forward(mb_X)
+                    cost += self.compute_cost(mb_Z, mb_Y)*self.batch_size
+                    self.backward(mb_Z, mb_Y)
+                    self.number_of_updates += 1
+                    self.update_parameters()
+                if (report_cost and i % report_cost_freq == 0) or i == 1:
+                    print('Cost after {} iterations: {}'.format(i, cost/X.shape[1]))
+
+
