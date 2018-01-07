@@ -1,19 +1,37 @@
 import numpy as np
 import MyNN
 import matplotlib.pyplot as plt
-import sklearn
-import sklearn.datasets
-import sklearn.linear_model
 
-train_X, train_Y = sklearn.datasets.make_moons(n_samples=300, noise=0.2)
-plt.scatter(train_X[:,0], train_X[:,1], c=train_Y, s=40, cmap=plt.cm.Spectral)
-train_X = train_X.T
-train_Y = train_Y.T.reshape((1,300))
 
-nn = MyNN.MyNN(2)
-nn.add(5, "ReLU")
-nn.add(2, 'ReLU')
-nn.add(1, 'Sigmoid')
-nn.compile('Cross entropy', "Adam")
+X = np.random.randn(4, 10000)*1000
+Y = np.zeros((2,10000))
 
-nn.optimize(train_X, train_Y, lr=0.01, num_epochs=10000, batch_size=64, report_cost=True, report_cost_freq=1000)
+for i in range(10000):
+    z = 2*X[0,i]+3+X[1,i]
+    if z < 0:
+        z = 0
+    k = (-2)*X[2,i] + (-1)*X[3,i]
+    if k < 0:
+        k=0
+    Y[0,i]=z + 2*k
+    Y[1,i]=(-1)*z + k
+
+#print(Y)
+nn = MyNN.MyNN(4)
+nn.add(2, "ReLU")
+nn.add(2, 'Linear')
+nn.compile('MSE', "Adam")
+nn.optimize(X, Y, lr=0.001, num_epochs=2000, batch_size=64, report_cost=True, report_cost_freq=100)
+print(nn.body)
+l = [1,2,3,4]
+z = 2 * l[0] + 3 + l[1]
+if z < 0:
+    z = 0
+k = (-2) * l[2] + (-1) * l[3]
+if k < 0:
+    k = 0
+p0 = z + 2 * k
+p1 = (-1) * z + k
+print(nn.forward(np.reshape(l, (4,1))))
+print(p0, p1)
+#print(X)

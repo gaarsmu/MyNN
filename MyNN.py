@@ -5,8 +5,6 @@ class MyNN:
         self.body = {}
         self.cache = {}
         self.grads = {}
-        self.v = {}
-        self.s = {}
         self.current_size = input_size
         self.n_of_layers=0
         self.f_script = ''
@@ -25,6 +23,8 @@ class MyNN:
     def backward(self, A, Y):
         if self.cost == 'Cross entropy':
             self.co = -(np.divide(Y, A) - np.divide(1-Y, 1-A))
+        elif self.cost == 'MSE':
+            self.co = (A-Y)
         exec(self.b_script)
         self.clear_cache()
 
@@ -46,6 +46,8 @@ class MyNN:
                 self.f_script=self.f_script+'self.co[self.co<0]=0\n'
             elif activation == 'Tanh':
                 self.f_script=self.f_script+'self.co=np.tanh(self.co)\n'
+            elif activation == 'Linear':
+                pass
             else:
                 print('Something wrong with activation')
             self.f_script = self.f_script + 'self.cache["A' + str(self.n_of_layers) + '"]=self.co\n'
@@ -60,6 +62,8 @@ class MyNN:
                 self.b_script='self.co[self.cache["Z'+str(self.n_of_layers)+'"]<=0]=0\n'+self.b_script
             elif activation == 'Tanh':
                 self.b_script='self.co=(1-np.power(self.cache["A'+str(self.n_of_layers)+'"],2))*self.co\n'+self.b_script
+            elif activation == 'Linear':
+                pass
             self.b_script='#Layer ' + str(self.n_of_layers) + ' backprop: Linear of size ({},{})'.format(size,self.current_size) + ' with ' + activation + ' activation.\n'+self.b_script
             self.current_size = size
 
@@ -74,10 +78,13 @@ class MyNN:
             pass
         elif optimizer == 'GDwM':
             self.beta = beta
+            self.v = {}
             for l in range(1, self.n_of_layers+1):
                 self.v['dW'+str(l)] = np.zeros(self.body['W'+str(l)].shape)
                 self.v['db'+str(l)] = np.zeros(self.body['b'+str(l)].shape)
         elif optimizer == 'Adam':
+            self.v = {}
+            self.s = {}
             self.beta = beta
             self.beta2 = beta2
             self.epsilon = epsilon
@@ -94,6 +101,8 @@ class MyNN:
         m = Y.shape[1]
         if self.cost == 'Cross entropy':
             cost = (-1/m) * np.sum(Y*np.log(Z) + (1-Y)*np.log(1-Z))
+        elif self.cost == 'MSE':
+            cost = (1/m) * np.sum((Y-Z)**2)
         cost = np.squeeze(cost)
         return cost
 
@@ -138,11 +147,11 @@ class MyNN:
             if batch_size is None:
                 self.cache['A0'] = X
                 Z = self.forward(X)
-                cost = self.compute_cost(Z, Y)
                 self.backward(Z, Y)
                 self.number_of_updates += 1
                 self.update_parameters()
-                if (report_cost and i % report_cost_freq == 0) or i == 1:
+                if report_cost and (i % report_cost_freq == 0 or i == 1):
+                    cost = self.compute_cost(Z, Y)
                     print('Cost after {} iterations: {}'.format(i, cost))
             else:
                 permutations = list(np.random.permutation(X.shape[1]))
