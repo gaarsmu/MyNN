@@ -21,7 +21,7 @@ nn = MyNN.MyNN(4)
 nn.add(2, "ReLU")
 nn.add(2, 'Linear')
 nn.compile('MSE', "Adam")
-nn.optimize(X, Y, lr=0.001, num_epochs=2000, batch_size=64, report_cost=True, report_cost_freq=100)
+nn.optimize(X, Y, lr=0.1, num_epochs=10000, report_cost=True, report_cost_freq=100)
 print(nn.body)
 l = [1,2,3,4]
 z = 2 * l[0] + 3 + l[1]

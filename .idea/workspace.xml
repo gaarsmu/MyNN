@@ -2,12 +2,10 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="ca608fa1-c805-4f36-8cb9-93627d492916" name="Default" comment="">
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/.ipynb_checkpoints/Test_4_CartPole_with_DQN-checkpoint.ipynb" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/.ipynb_checkpoints/Test_5_CartPole_with_VanillaPG-checkpoint.ipynb" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/Test_4_CartPole_with_DQN.ipynb" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/Test_5_CartPole_with_VanillaPG.ipynb" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/workspace.xml" afterPath="$PROJECT_DIR$/.idea/workspace.xml" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.ipynb_checkpoints/Test_5_CartPole_with_VanillaPG-checkpoint.ipynb" afterPath="$PROJECT_DIR$/.ipynb_checkpoints/Test_5_CartPole_with_VanillaPG-checkpoint.ipynb" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/MyNN.py" afterPath="$PROJECT_DIR$/MyNN.py" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/Test_5_CartPole_with_VanillaPG.ipynb" afterPath="$PROJECT_DIR$/Test_5_CartPole_with_VanillaPG.ipynb" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/test.py" afterPath="$PROJECT_DIR$/test.py" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
@@ -22,8 +20,8 @@
       <file leaf-file-name="MyNN.py" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/MyNN.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="1433">
-              <caret line="146" column="0" lean-forward="false" selection-start-line="146" selection-start-column="0" selection-end-line="146" selection-end-column="0" />
+            <state relative-caret-position="-43">
+              <caret line="138" column="57" lean-forward="false" selection-start-line="138" selection-start-column="57" selection-end-line="138" selection-end-column="57" />
               <folding />
             </state>
           </provider>
@@ -32,8 +30,8 @@
       <file leaf-file-name="test.py" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/test.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="191">
-              <caret line="36" column="9" lean-forward="true" selection-start-line="36" selection-start-column="9" selection-end-line="36" selection-end-column="9" />
+            <state relative-caret-position="119">
+              <caret line="23" column="39" lean-forward="false" selection-start-line="23" selection-start-column="39" selection-end-line="23" selection-end-column="39" />
               <folding>
                 <element signature="e#0#18#0" expanded="true" />
               </folding>
@@ -209,11 +207,19 @@
       <option name="project" value="LOCAL" />
       <updated>1515225937848</updated>
     </task>
-    <option name="localTasksCounter" value="6" />
+    <task id="LOCAL-00006" summary="-Added MSE losses&#10;-Added Test 4: DQN agent">
+      <created>1515304660219</created>
+      <option name="number" value="00006" />
+      <option name="presentableId" value="LOCAL-00006" />
+      <option name="project" value="LOCAL" />
+      <updated>1515304660219</updated>
+    </task>
+    <option name="localTasksCounter" value="7" />
     <servers />
   </component>
   <component name="ToolWindowManager">
     <frame x="65" y="28" width="1291" height="705" extended-state="0" />
+    <editor active="true" />
     <layout>
       <window_info id="Project" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" show_stripe_button="true" weight="0.24941905" sideWeight="0.5" order="0" side_tool="false" content_ui="combo" />
       <window_info id="TODO" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="6" side_tool="false" content_ui="tabs" />
@@ -270,17 +276,11 @@
     <MESSAGE value="-Fixed ReLU and Sigmoid&#10;-Added layer description&#10;-Removed layer unnecessary calculation" />
     <MESSAGE value="-Added Tanh activation&#10;-Finished Test 2 planar data&#10;-Added correct report frequancy" />
     <MESSAGE value="-Added minibatches&#10;-Added gradient descend with momentum and Adam optimizers&#10;-Added Test 3" />
-    <option name="LAST_COMMIT_MESSAGE" value="-Added minibatches&#10;-Added gradient descend with momentum and Adam optimizers&#10;-Added Test 3" />
+    <MESSAGE value="-Added MSE losses&#10;-Added Test 4: DQN agent" />
+    <option name="LAST_COMMIT_MESSAGE" value="-Added MSE losses&#10;-Added Test 4: DQN agent" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
-      <breakpoints>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/test.py</url>
-          <line>23</line>
-          <option name="timeStamp" value="2" />
-        </line-breakpoint>
-      </breakpoints>
       <option name="time" value="3" />
     </breakpoint-manager>
     <watches-manager />
@@ -404,16 +404,16 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/MyNN.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="1433">
-          <caret line="146" column="0" lean-forward="false" selection-start-line="146" selection-start-column="0" selection-end-line="146" selection-end-column="0" />
+        <state relative-caret-position="-43">
+          <caret line="138" column="57" lean-forward="false" selection-start-line="138" selection-start-column="57" selection-end-line="138" selection-end-column="57" />
           <folding />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/test.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="191">
-          <caret line="36" column="9" lean-forward="true" selection-start-line="36" selection-start-column="9" selection-end-line="36" selection-end-column="9" />
+        <state relative-caret-position="119">
+          <caret line="23" column="39" lean-forward="false" selection-start-line="23" selection-start-column="39" selection-end-line="23" selection-end-column="39" />
           <folding>
             <element signature="e#0#18#0" expanded="true" />
           </folding>

@@ -20,11 +20,11 @@ class MyNN:
         exec(self.f_script)
         return self.co
 
-    def backward(self, A, Y):
+    def backward(self, A, Y, weights):
         if self.cost == 'Cross entropy':
-            self.co = -(np.divide(Y, A) - np.divide(1-Y, 1-A))
+            self.co = (-(np.divide(Y, A) - np.divide(1-Y, 1-A))) * weights
         elif self.cost == 'MSE':
-            self.co = (A-Y)
+            self.co = (A-Y)*weights
         exec(self.b_script)
         self.clear_cache()
 
@@ -96,13 +96,13 @@ class MyNN:
         else:
             print("We don't have this optimizer yet")
 
-
-    def compute_cost(self, Z, Y):
+    def compute_cost(self, Z, Y, weights):
         m = Y.shape[1]
         if self.cost == 'Cross entropy':
             cost = (-1/m) * np.sum(Y*np.log(Z) + (1-Y)*np.log(1-Z))
         elif self.cost == 'MSE':
             cost = (1/m) * np.sum((Y-Z)**2)
+        cost *= weights
         cost = np.squeeze(cost)
         return cost
 
@@ -130,14 +130,13 @@ class MyNN:
                 self.body['W'+str(i)] -= self.lr*(v_corrected_dW/(np.sqrt(s_corrected_dW)+self.epsilon))
                 self.body['b'+str(i)] -= self.lr*(v_corrected_db/(np.sqrt(s_corrected_db)+self.epsilon))
 
-
     def clear_cache(self):
         for i in range(1, self.n_of_layers+1):
             self.cache['A'+str(i)] = None
             self.cache['Z'+str(i)] = None
 
-    def optimize(self, X, Y, lr, num_epochs, report_cost=True, report_cost_freq=100,
-                 batch_size=None):
+    def optimize(self, X, Y, weights=None, lr=0.01, num_epochs=1000,
+                 report_cost=True, report_cost_freq=100, batch_size=None):
         self.lr = lr
         if batch_size is None:
             self.batch_size=X.shape[1]
@@ -145,13 +144,15 @@ class MyNN:
             self.batch_size=batch_size
         for i in range(1, num_epochs+1):
             if batch_size is None:
+                if weights is None:
+                    weights = 1
                 self.cache['A0'] = X
                 Z = self.forward(X)
-                self.backward(Z, Y)
+                self.backward(Z, Y, weights)
                 self.number_of_updates += 1
                 self.update_parameters()
                 if report_cost and (i % report_cost_freq == 0 or i == 1):
-                    cost = self.compute_cost(Z, Y)
+                    cost = self.compute_cost(Z, Y, weights)
                     print('Cost after {} iterations: {}'.format(i, cost))
             else:
                 permutations = list(np.random.permutation(X.shape[1]))
@@ -161,10 +162,14 @@ class MyNN:
                     indexes = permutations[k*batch_size:(k+1)*batch_size]
                     mb_X=X[:,indexes]
                     mb_Y=Y[:,indexes].reshape(self.current_size, -1)
+                    if weights is None:
+                        mb_weights = 1
+                    else:
+                        mb_weights = weights[:, indexes].reshape(self.current_size, -1)
                     self.cache['A0'] = mb_X
                     mb_Z = self.forward(mb_X)
-                    cost += self.compute_cost(mb_Z, mb_Y)*self.batch_size
-                    self.backward(mb_Z, mb_Y)
+                    cost += self.compute_cost(mb_Z, mb_Y, mb_weights)*self.batch_size
+                    self.backward(mb_Z, mb_Y, mb_weights)
                     self.number_of_updates += 1
                     self.update_parameters()
                 if (report_cost and i % report_cost_freq == 0) or i == 1:
