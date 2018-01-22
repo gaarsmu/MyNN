@@ -168,11 +168,41 @@ class MyNN:
                         mb_weights = weights[:, indexes].reshape(self.current_size, -1)
                     self.cache['A0'] = mb_X
                     mb_Z = self.forward(mb_X)
-                    cost += self.compute_cost(mb_Z, mb_Y, mb_weights)*self.batch_size
+                    if report_cost:
+                        cost += self.compute_cost(mb_Z, mb_Y, mb_weights)*self.batch_size
                     self.backward(mb_Z, mb_Y, mb_weights)
                     self.number_of_updates += 1
                     self.update_parameters()
-                if (report_cost and i % report_cost_freq == 0) or i == 1:
+                if report_cost and (i % report_cost_freq == 0 or i == 1):
                     print('Cost after {} iterations: {}'.format(i, cost/X.shape[1]))
 
+
+class Scaler():
+
+    def __init__(self, obs_dim):
+        self.vars = np.zeros((obs_dim,1))
+        self.means = np.zeros((obs_dim,1))
+        self.m = 0
+        self.n = 0
+        self.first_pass = True
+
+    def update(self, x):
+        if self.first_pass:
+            self.means = np.mean(x, axis=1, keepdims=True)
+            self.vars = np.var(x, axis=1, keepdims=True)
+            self.m = x.shape[0]
+            self.first_pass = False
+        else:
+            n= x.shape[1]
+            new_data_var = np.var(x, axis=1, keepdims=True)
+            new_data_mean = np.mean(x, axis=1, keepdims=True)
+            new_data_mean_sq = np.square(new_data_mean)
+            new_means = (self.m*self.means+n*new_data_mean)/(self.m+n)
+            self.vars = (self.m*(self.vars+np.square(self.means))+n*(new_data_var + new_data_mean_sq))/(self.m + n) - np.square(new_means)
+            self.vars = np.maximum(0.0, self.vars)
+            self.means = new_means
+            self.m += n
+
+    def get(self):
+        return self.means, self.vars+0.1
 
