@@ -8,6 +8,7 @@ class MyNN:
         self.current_size = input_size
         self.n_of_layers=0
         self.f_script = ''
+        self.f_script_nc = ''
         self.b_script = ''
         self.compiled = False
         self.co = None
@@ -15,9 +16,12 @@ class MyNN:
         self.batch_size = 1
         self.number_of_updates = 0
 
-    def forward(self, x):
+    def forward(self, x, caching='replace'):
         self.co=x
-        exec(self.f_script)
+        if caching == 'replace':
+            exec(self.f_script)
+        elif caching=='no':
+            exec(self.f_script_nc)
         return self.co
 
     def backward(self, A, Y, weights):
@@ -36,7 +40,7 @@ class MyNN:
             self.cache['Z'+str(self.n_of_layers)]=None
             self.body['W'+str(self.n_of_layers)] = np.random.randn(size, self.current_size)/np.sqrt(self.current_size)
             self.body['b'+str(self.n_of_layers)] = np.zeros((size,1))
-            # Forward pass update
+            # Forward pass with cache update
             self.f_script=self.f_script+'#Layer '+str(self.n_of_layers)+': Linear of size ({},{})'.format(size, self.current_size)+' with '+activation+' activation.\n'
             self.f_script=self.f_script+'self.co=np.dot(self.body["W'+str(self.n_of_layers)+'"],self.co)+self.body["b'+str(self.n_of_layers)+'"]\n'
             self.f_script=self.f_script+'self.cache["Z'+str(self.n_of_layers)+'"]=self.co\n'
@@ -48,15 +52,34 @@ class MyNN:
                 self.f_script=self.f_script+'self.co=np.tanh(self.co)\n'
             elif activation == 'Linear':
                 pass
+            elif activation == 'Softmax':
+                self.f_script = self.f_script + 'self.co=np.exp(self.co)\n'
+                self.f_script = self.f_script + 'self.co=self.co/np.sum(self.co, axis=0, keepdims=True)\n'
             else:
                 print('Something wrong with activation')
             self.f_script = self.f_script + 'self.cache["A' + str(self.n_of_layers) + '"]=self.co\n'
+            #Forward script without caching update
+            self.f_script_nc=self.f_script_nc+'#Layer '+str(self.n_of_layers)+': Linear of size ({},{})'.format(size, self.current_size)+' with '+activation+' activation.\n'
+            self.f_script_nc=self.f_script_nc+'self.co=np.dot(self.body["W'+str(self.n_of_layers)+'"],self.co)+self.body["b'+str(self.n_of_layers)+'"]\n'
+            if activation == 'Sigmoid':
+                self.f_script_nc=self.f_script_nc+'self.co=1/(1+np.exp(-self.co))\n'
+            elif activation == 'ReLU':
+                self.f_script_nc=self.f_script_nc+'self.co[self.co<0]=0\n'
+            elif activation == 'Tanh':
+                self.f_script_nc=self.f_script_nc+'self.co=np.tanh(self.co)\n'
+            elif activation == 'Linear':
+                pass
+            elif activation == 'Softmax':
+                self.f_script_nc = self.f_script_nc + 'self.co=np.exp(self.co)\n'
+                self.f_script_nc = self.f_script_nc + 'self.co=self.co/np.sum(self.co, axis=0, keepdims=True)\n'
+            else:
+                print('Something wrong with activation')
             #Backward pass update
             if self.n_of_layers != 1:
                 self.b_script = 'self.co=np.dot(self.body["W' + str(self.n_of_layers) + '"].T,self.co)\n' + self.b_script
             self.b_script='self.grads["dW'+str(self.n_of_layers)+'"]=(1/self.batch_size)*np.dot(self.co, self.cache["A'+str(self.n_of_layers-1)+'"].T)\n'+self.b_script
             self.b_script='self.grads["db'+str(self.n_of_layers)+'"]=(1/self.batch_size)*np.sum(self.co, axis=1, keepdims=True)\n'+self.b_script
-            if activation == 'Sigmoid':
+            if activation == 'Sigmoid' or activation == 'Softmax':
                 self.b_script='self.co=self.cache["A'+str(self.n_of_layers)+'"]*(1-self.cache["A'+str(self.n_of_layers)+'"])*self.co\n'+self.b_script
             elif activation == 'ReLU':
                 self.b_script='self.co[self.cache["Z'+str(self.n_of_layers)+'"]<=0]=0\n'+self.b_script
@@ -101,7 +124,7 @@ class MyNN:
         if self.cost == 'Cross entropy':
             cost = (-1/m) * np.sum(Y*np.log(Z) + (1-Y)*np.log(1-Z))
         elif self.cost == 'MSE':
-            cost = (1/m) * np.sum((Y-Z)**2)
+            cost = (1/(2*m)) * np.sum(np.square(Y-Z))
         cost *= weights
         cost = np.squeeze(cost)
         return cost
@@ -139,9 +162,9 @@ class MyNN:
                  report_cost=True, report_cost_freq=100, batch_size=None):
         self.lr = lr
         if batch_size is None:
-            self.batch_size=X.shape[1]
+            self.batch_size = X.shape[1]
         else:
-            self.batch_size=batch_size
+            self.batch_size = batch_size
         for i in range(1, num_epochs+1):
             if batch_size is None:
                 if weights is None:
@@ -156,9 +179,9 @@ class MyNN:
                     print('Cost after {} iterations: {}'.format(i, cost))
             else:
                 permutations = list(np.random.permutation(X.shape[1]))
-                num_complete_batches = int(np.floor(X.shape[1]/batch_size))
+                num_batches = int(np.floor((X.shape[1]-1)/batch_size))
                 cost = 0
-                for k in range(0, num_complete_batches+1):
+                for k in range(0, num_batches+1):
                     indexes = permutations[k*batch_size:(k+1)*batch_size]
                     mb_X=X[:,indexes]
                     mb_Y=Y[:,indexes].reshape(self.current_size, -1)
@@ -175,7 +198,6 @@ class MyNN:
                     self.update_parameters()
                 if report_cost and (i % report_cost_freq == 0 or i == 1):
                     print('Cost after {} iterations: {}'.format(i, cost/X.shape[1]))
-
 
 class Scaler():
 
