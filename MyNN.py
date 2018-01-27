@@ -24,11 +24,18 @@ class MyNN:
             exec(self.f_script_nc)
         return self.co
 
-    def backward(self, A, Y, weights):
-        if self.cost == 'Cross entropy':
+    def backward(self, A, Y, weights, beta=1):
+        if self.cost == 'Cross entropy sigm':
+            self.co = (-(np.divide(Y, A) - np.divide(1-Y, 1-A))) * weights
+        elif self.cost == 'Cross entropy':
             self.co = (-(np.divide(Y, A) - np.divide(1-Y, 1-A))) * weights
         elif self.cost == 'MSE':
             self.co = (A-Y)*weights
+        elif self.cost == 'Standart policy':
+            self.co = (-1)*np.divide(weights, Y)
+        elif self.cost == 'TRPO':
+            self.co = (-1)*(np.divide(weights, Y)-np.sum(weights, axis=0)/Y.shape[0])
+            self.co += (-(np.divide(Y, A) - np.divide(1-Y, 1-A)))*beta
         exec(self.b_script)
         self.clear_cache()
 
@@ -119,15 +126,26 @@ class MyNN:
         else:
             print("We don't have this optimizer yet")
 
-    def compute_cost(self, Z, Y, weights):
+    def compute_cost(self, Z, Y, weights, beta=1):
         m = Y.shape[1]
-        if self.cost == 'Cross entropy':
+        if self.cost == 'Cross entropy sigm' or self.cost == 'Cross entropy':
             cost = (-1/m) * np.sum(Y*np.log(Z) + (1-Y)*np.log(1-Z))
+        elif self.cost == 'Cross entropy':
+            self.cost = (-1/m) * np.sum(Y*np.log(Z))
         elif self.cost == 'MSE':
             cost = (1/(2*m)) * np.sum(np.square(Y-Z))
+        elif self.cost == 'Standart policy':
+            cost = (-1/m)*np.sum((1/Y)* weights)
+        elif self.cost == 'TRPO':
+            cost1 = (-1/m) * (Z/Y) * weights
+            cost1 = np.sum(cost1)
+            cost2 = (1/m) * (Y * np.log(np.divide(Y,Z))) * beta
+            cost2 = np.sum(cost2)
+            cost = cost1 + cost2
+            return cost, (cost1, cost2)
         cost *= weights
         cost = np.squeeze(cost)
-        return cost
+        return (cost)
 
     def update_parameters(self):
         if self.optimizer == 'GD' or self.optimizer == 'Gradient descend':
@@ -176,7 +194,7 @@ class MyNN:
                 self.update_parameters()
                 if report_cost and (i % report_cost_freq == 0 or i == 1):
                     cost = self.compute_cost(Z, Y, weights)
-                    print('Cost after {} iterations: {}'.format(i, cost))
+                    print('Cost after {} iterations: {}'.format(i, cost[0]))
             else:
                 permutations = list(np.random.permutation(X.shape[1]))
                 num_batches = int(np.floor((X.shape[1]-1)/batch_size))
@@ -192,7 +210,7 @@ class MyNN:
                     self.cache['A0'] = mb_X
                     mb_Z = self.forward(mb_X)
                     if report_cost:
-                        cost += self.compute_cost(mb_Z, mb_Y, mb_weights)*self.batch_size
+                        cost += self.compute_cost(mb_Z, mb_Y, mb_weights)[0]*self.batch_size
                     self.backward(mb_Z, mb_Y, mb_weights)
                     self.number_of_updates += 1
                     self.update_parameters()
