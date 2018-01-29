@@ -24,7 +24,7 @@ class MyNN:
             exec(self.f_script_nc)
         return self.co
 
-    def backward(self, A, Y, weights, beta=1):
+    def backward(self, A, Y, weights, beta=1, eta=1, DKL=1e-4, DKL_targ=1e-4):
         if self.cost == 'Cross entropy sigm':
             self.co = (-(np.divide(Y, A) - np.divide(1-Y, 1-A))) * weights
         elif self.cost == 'Cross entropy':
@@ -36,6 +36,11 @@ class MyNN:
         elif self.cost == 'TRPO':
             self.co = (-1)*(np.divide(weights, Y)-np.sum(weights, axis=0)/Y.shape[0])
             self.co += (-(np.divide(Y, A) - np.divide(1-Y, 1-A)))*beta
+        elif self.cost == 'PPO':
+            self.co = (-1)*(np.divide(weights, Y)-np.sum(weights, axis=0)/Y.shape[0])
+            self.co += (-(np.divide(Y, A) - np.divide(1-Y, 1-A)))*beta
+            if DKL-2*DKL_targ > 0:
+                self.co += (-(np.divide(Y, A) - np.divide(1-Y, 1-A)))*eta*(2*DKL-4*DKL_targ)
         exec(self.b_script)
         self.clear_cache()
 
@@ -126,7 +131,7 @@ class MyNN:
         else:
             print("We don't have this optimizer yet")
 
-    def compute_cost(self, Z, Y, weights, beta=1):
+    def compute_cost(self, Z, Y, weights, beta=1, eta=1, DKL_targ=4e-4):
         m = Y.shape[1]
         if self.cost == 'Cross entropy sigm' or self.cost == 'Cross entropy':
             cost = (-1/m) * np.sum(Y*np.log(Z) + (1-Y)*np.log(1-Z))
@@ -143,6 +148,15 @@ class MyNN:
             cost2 = np.sum(cost2)
             cost = cost1 + cost2
             return cost, (cost1, cost2)
+        elif self.cost == 'PPO':
+            cost1 = (-1/m) * (Z/Y) * weights
+            cost1 = np.sum(cost1)
+            DKL = (1/m)*(Y * np.log(np.divide(Y,Z)))
+            cost2 = DKL * beta
+            cost2 = np.sum(cost2)
+            cost3 = np.square(np.maximum(0, DKL-2*DKL_targ))
+            cost = cost1 + cost2 + cost3
+            return cost, (cost1, cost2, cost3)
         cost *= weights
         cost = np.squeeze(cost)
         return (cost)
