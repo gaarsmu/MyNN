@@ -1,4 +1,5 @@
 import numpy as np
+import _pickle as pickle
 
 class MyNN:
     def __init__(self, input_size):
@@ -24,7 +25,7 @@ class MyNN:
             exec(self.f_script_nc)
         return self.co
 
-    def backward(self, A, Y, weights, beta=1, eta=1, DKL=1e-4, DKL_targ=1e-4):
+    def backward(self, A, Y, weights, actions=None, beta=1, eta=1, DKL=1e-4, DKL_targ=1e-4):
         if self.cost == 'Cross entropy sigm':
             self.co = (-(np.divide(Y, A) - np.divide(1-Y, 1-A))) * weights
         elif self.cost == 'Cross entropy':
@@ -36,11 +37,23 @@ class MyNN:
         elif self.cost == 'TRPO':
             self.co = (-1)*(np.divide(weights, Y)-np.sum(weights, axis=0)/Y.shape[0])
             self.co += (-(np.divide(Y, A) - np.divide(1-Y, 1-A)))*beta
-        elif self.cost == 'PPO':
+        elif self.cost == 'PPO_SM':
+            weights = weights * actions
             self.co = (-1)*(np.divide(weights, Y)-np.sum(weights, axis=0)/Y.shape[0])
             self.co += (-(np.divide(Y, A) - np.divide(1-Y, 1-A)))*beta
             if DKL-2*DKL_targ > 0:
                 self.co += (-(np.divide(Y, A) - np.divide(1-Y, 1-A)))*eta*(2*DKL-4*DKL_targ)
+        elif self.cost == 'PPO_CEM':
+            self.co = (-(np.divide(actions, A) - np.divide(1-actions, 1-A))) * weights
+            self.co += (-(np.divide(Y, A) - np.divide(1-Y, 1-A)))*beta
+            if DKL-2*DKL_targ > 0:
+                self.co += (-(np.divide(Y, A) - np.divide(1-Y, 1-A)))*eta*(2*DKL-4*DKL_targ)
+        elif self.cost == 'PPO_logp':
+            weights = weights * actions
+            self.co = (-1)*(np.divide(1, A)) * weights
+            self.co += (-1)*(np.divide(Y, A) - np.divide(1-Y, 1-A))*beta
+            if DKL-2*DKL_targ > 0:
+                self.co += (-1)*(np.divide(Y, A) - np.divide(1-Y, 1-A))*eta*(2*DKL-4*DKL_targ)
         exec(self.b_script)
         self.clear_cache()
 
@@ -231,6 +244,51 @@ class MyNN:
                 if report_cost and (i % report_cost_freq == 0 or i == 1):
                     print('Cost after {} iterations: {}'.format(i, cost/X.shape[1]))
 
+    def nn_to_dict(self):
+        dict = {'body': self.body, 'n_of_layers': self.n_of_layers, 'grads': self.grads,
+                'cost': self.cost, 'optimizer': self.optimizer, 'f_script': self.f_script,
+                'f_script_nc': self.f_script_nc, 'b_script': self.b_script,
+                'n_of_updates': self.number_of_updates, 'current_size': self.current_size,
+                'lr': self.lr}
+        if self.optimizer == 'GDwM':
+            dict['v'] = self.v
+            dict['beta'] = self.beta
+        elif self.optimizer == 'Adam':
+            dict['v'] = self.v
+            dict['beta'] = self.beta
+            dict['s'] = self.s
+            dict['beta2'] = self.beta2
+            dict['epsilon'] = self.epsilon
+        return dict
+
+    def save(self, path = 'MyNN_dictionary.mnnd'):
+        dict = self.nn_to_dict()
+        pickle.dump(dict, open(path, 'wb'))
+
+    def load(self, path):
+        dict = pickle.load(open(path, 'rb'))
+        self.body = dict['body']
+        self.grads = dict['grads']
+        self.current_size = dict['current_size']
+        self.n_of_layers=dict['n_of_layers']
+        self.f_script = dict['f_script']
+        self.f_script_nc = dict['f_script_nc']
+        self.b_script = dict['b_script']
+        self.lr = dict['lr']
+        self.number_of_updates = dict['n_of_updates']
+        self.cost = dict['cost']
+        self.optimizer = dict['optimizer']
+        if self.optimizer == 'GDwM':
+            self.v = dict['v']
+            self.beta = dict['beta']
+        elif self.optimizer == 'Adam':
+            self.v = dict['v']
+            self.beta = dict['beta']
+            self.s = dict['s']
+            self.beta2 = dict['beta2']
+            self.epsilon = dict['epsilon']
+
+
 class Scaler():
 
     def __init__(self, obs_dim):
@@ -247,7 +305,7 @@ class Scaler():
             self.m = x.shape[0]
             self.first_pass = False
         else:
-            n= x.shape[1]
+            n = x.shape[1]
             new_data_var = np.var(x, axis=1, keepdims=True)
             new_data_mean = np.mean(x, axis=1, keepdims=True)
             new_data_mean_sq = np.square(new_data_mean)
@@ -259,4 +317,17 @@ class Scaler():
 
     def get(self):
         return self.means, self.vars+0.1
+
+    def save(self, path='scaler.mnnd'):
+        tupl = (self.vars, self.means, self.m)
+        pickle.dump(tupl, open(path, 'wb'))
+
+    def load(self, path):
+        tupl = pickle.load(open(path, 'rb'))
+        self.vars = tupl[0]
+        self.means = tupl[1]
+        self.m = tupl[2]
+        self.n = 0
+        self.first_pass = False
+
 
