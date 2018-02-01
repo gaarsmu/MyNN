@@ -25,7 +25,7 @@ class MyNN:
             exec(self.f_script_nc)
         return self.co
 
-    def backward(self, A, Y, weights, actions=None, beta=1, eta=1, DKL=1e-4, DKL_targ=1e-4):
+    def backward(self, A, Y, weights, actions=None, variances=None, beta=1, eta=1, DKL=1e-4, DKL_targ=1e-4):
         if self.cost == 'Cross entropy sigm':
             self.co = (-(np.divide(Y, A) - np.divide(1-Y, 1-A))) * weights
         elif self.cost == 'Cross entropy':
@@ -54,6 +54,9 @@ class MyNN:
             self.co += (-1)*(np.divide(Y, A) - np.divide(1-Y, 1-A))*beta
             if DKL-2*DKL_targ > 0:
                 self.co += (-1)*(np.divide(Y, A) - np.divide(1-Y, 1-A))*eta*(2*DKL-4*DKL_targ)
+        elif self.cost == 'Cont':
+            #actions here stay for variance
+            self.co = np.divide(Y - actions, variances)*weights
         exec(self.b_script)
         self.clear_cache()
 
@@ -291,11 +294,12 @@ class MyNN:
 
 class Scaler():
 
-    def __init__(self, obs_dim):
+    def __init__(self, obs_dim, weight):
         self.vars = np.zeros((obs_dim,1))
         self.means = np.zeros((obs_dim,1))
         self.m = 0
         self.n = 0
+        self.w = weight
         self.first_pass = True
 
     def update(self, x):
@@ -313,7 +317,7 @@ class Scaler():
             self.vars = (self.m*(self.vars+np.square(self.means))+n*(new_data_var + new_data_mean_sq))/(self.m + n) - np.square(new_means)
             self.vars = np.maximum(0.0, self.vars)
             self.means = new_means
-            self.m += n
+            self.m = int(self.m*self.w + n)
 
     def get(self):
         return self.means, self.vars+0.1
