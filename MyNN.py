@@ -37,7 +37,7 @@ class MyNN:
         elif self.cost == 'TRPO':
             self.co = (-1)*(np.divide(weights, Y)-np.sum(weights, axis=0)/Y.shape[0])
             self.co += (-(np.divide(Y, A) - np.divide(1-Y, 1-A)))*beta
-        elif self.cost == 'PPO_SM':
+        elif self.cost == 'PPO_SP':
             weights = weights * actions
             self.co = (-1)*(np.divide(weights, Y)-np.sum(weights, axis=0)/Y.shape[0])
             self.co += (-(np.divide(Y, A) - np.divide(1-Y, 1-A)))*beta
@@ -294,12 +294,12 @@ class MyNN:
 
 class Scaler():
 
-    def __init__(self, obs_dim, weight):
+    def __init__(self, obs_dim, w=1):
         self.vars = np.zeros((obs_dim,1))
         self.means = np.zeros((obs_dim,1))
         self.m = 0
         self.n = 0
-        self.w = weight
+        self.w = w
         self.first_pass = True
 
     def update(self, x):
