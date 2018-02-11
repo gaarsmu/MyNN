@@ -25,40 +25,62 @@ class MyNN:
             exec(self.f_script_nc)
         return self.co
 
-    def backward(self, A, Y, weights, actions=None, variances=None, beta=1, eta=1, DKL=1e-4, DKL_targ=1e-4):
-        if self.cost == 'Cross entropy sigm':
-            self.co = (-(np.divide(Y, A) - np.divide(1-Y, 1-A))) * weights
-        elif self.cost == 'Cross entropy':
-            self.co = (-(np.divide(Y, A) - np.divide(1-Y, 1-A))) * weights
-        elif self.cost == 'MSE':
-            self.co = (A-Y)*weights
-        elif self.cost == 'Standart policy':
-            self.co = (-1)*np.divide(weights, Y)
-        elif self.cost == 'TRPO':
-            self.co = (-1)*(np.divide(weights, Y)-np.sum(weights, axis=0)/Y.shape[0])
-            self.co += (-(np.divide(Y, A) - np.divide(1-Y, 1-A)))*beta
-        elif self.cost == 'PPO_SP':
-            weights = weights * actions
-            self.co = (-1)*(np.divide(weights, Y)-np.sum(weights, axis=0)/Y.shape[0])
-            self.co += (-(np.divide(Y, A) - np.divide(1-Y, 1-A)))*beta
-            if DKL-2*DKL_targ > 0:
-                self.co += (-(np.divide(Y, A) - np.divide(1-Y, 1-A)))*eta*(2*DKL-4*DKL_targ)
-        elif self.cost == 'PPO_CEM':
-            self.co = (-(np.divide(actions, A) - np.divide(1-actions, 1-A))) * weights
-            self.co += (-(np.divide(Y, A) - np.divide(1-Y, 1-A)))*beta
-            if DKL-2*DKL_targ > 0:
-                self.co += (-(np.divide(Y, A) - np.divide(1-Y, 1-A)))*eta*(2*DKL-4*DKL_targ)
-        elif self.cost == 'PPO_logp':
-            weights = weights * actions
-            self.co = (-1)*(np.divide(1, A)) * weights
-            self.co += (-1)*(np.divide(Y, A) - np.divide(1-Y, 1-A))*beta
-            if DKL-2*DKL_targ > 0:
-                self.co += (-1)*(np.divide(Y, A) - np.divide(1-Y, 1-A))*eta*(2*DKL-4*DKL_targ)
-        elif self.cost == 'Cont':
-            #actions here stay for variance
-            self.co = np.divide(Y - actions, variances)*weights
+    def backward(self, A, Y, weights, grads = None, d=None, actions=None, variances=None, beta=1, eta=1, DKL=1e-4, DKL_targ=1e-4):
+        if grads is not None:
+            self.co = grads
+        elif d is not None:
+            self.co = self.get_grads(d)
+        else:
+            if self.cost == 'Cross entropy sigm':
+                self.co = (-(np.divide(Y, A) - np.divide(1-Y, 1-A))) * weights
+            elif self.cost == 'Cross entropy':
+                self.co = (-(np.divide(Y, A) - np.divide(1-Y, 1-A))) * weights
+            elif self.cost == 'MSE':
+                self.co = (A-Y)*weights
+            elif self.cost == 'Standart policy':
+                self.co = (-1)*np.divide(weights, Y)
+            elif self.cost == 'TRPO':
+                self.co = (-1)*(np.divide(weights, Y)-np.sum(weights, axis=0)/Y.shape[0])
+                self.co += (-(np.divide(Y, A) - np.divide(1-Y, 1-A)))*beta
+            elif self.cost == 'PPO_SP':
+                weights = weights * actions
+                self.co = (-1)*(np.divide(weights, Y)-np.sum(weights, axis=0)/Y.shape[0])
+                self.co += (-(np.divide(Y, A) - np.divide(1-Y, 1-A)))*beta
+                if DKL-2*DKL_targ > 0:
+                    self.co += (-(np.divide(Y, A) - np.divide(1-Y, 1-A)))*eta*(2*DKL-4*DKL_targ)
+            elif self.cost == 'PPO_CEM':
+                self.co = (-(np.divide(actions, A) - np.divide(1-actions, 1-A))) * weights
+                self.co += (-(np.divide(Y, A) - np.divide(1-Y, 1-A)))*beta
+                if DKL-2*DKL_targ > 0:
+                    self.co += (-(np.divide(Y, A) - np.divide(1-Y, 1-A)))*eta*(2*DKL-4*DKL_targ)
+            elif self.cost == 'PPO_logp':
+                weights = weights * actions
+                self.co = (-1)*(np.divide(1, A)) * weights
+                self.co += (-1)*(np.divide(Y, A) - np.divide(1-Y, 1-A))*beta
+                if DKL-2*DKL_targ > 0:
+                    self.co += (-1)*(np.divide(Y, A) - np.divide(1-Y, 1-A))*eta*(2*DKL-4*DKL_targ)
+            elif self.cost == 'Cont':
+                self.co = np.divide(Y - actions, variances)*weights
+            else:
+                print('Check the optimization method')
         exec(self.b_script)
         self.clear_cache()
+
+    def get_grads(self, d):
+        if self.cost == 'PPO_CEM':
+            grads = (-(np.divide(d['act'], d['res']) - np.divide(1-d['act'], 1-d['res']))) * d['adv']
+            grads += (-(np.divide(d['old_probs'], d['res']) - np.divide(1-d['old_probs'], 1-d['res'])))*d['beta']
+            if d['DKL'] - 2*d['DKL_targ'] > 0:
+                grads += (-(np.divide(d['old_probs'], d['res']) - np.divide(1 - d['old_probs'], 1 - d['res']))) * d['eta']*(2*d['DKL']-4*d['DKL_targ'])
+        elif self.cost == 'Cont':
+            grads = np.divide(d['means']-d['actions'], d['vars'])*d['adv']
+        elif self.cost == 'Cont_PPO':
+            grads = (-1)*np.divide(d['actions'] - d['means'], d['vars']) * d['adv']*d['prob_exp']
+            grads += (-1)*np.divide(d['old_means']-d['means'], d['vars']) * d['beta']
+            if d['DKL'] - 2 * d['DKL_targ'] > 0:
+                grads += (-1)*np.divide(d['old_means']-d['means'], d['vars']) * d['beta']* d['eta']*(2*d['DKL']-4*d['DKL_targ'])
+        return grads
+
 
     def add(self, size, activation):
         if not self.compiled:
