@@ -76,10 +76,10 @@ class MyNN:
         elif self.cost == 'Cont':
             grads = np.divide(d['means']-d['actions'], d['vars'])*d['adv']
         elif self.cost == 'Cont_PPO':
-            grads = (-1)*np.divide(d['actions'] - d['means'], d['vars']) * d['adv']*d['prob_exp']
-            grads += (-1)*np.divide(d['old_means']-d['means'], d['vars']) * d['beta']
+            grads = np.divide(d['means'] - d['actions'], d['vars']) * d['adv']*d['prob_exp']
+            grads += np.divide(d['means'] - d['old_means'], d['vars']) * d['beta']
             if d['DKL'] - 2 * d['DKL_targ'] > 0:
-                grads += (-1)*np.divide(d['old_means']-d['means'], d['vars']) * d['beta']* d['eta']*(2*d['DKL']-4*d['DKL_targ'])
+                grads += np.divide(d['means'] - d['old_means'], d['vars']) * d['beta']* d['eta']*(2*d['DKL']-4*d['DKL_targ'])
         return grads
 
 
