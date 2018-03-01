@@ -16,6 +16,7 @@ class MyNN:
         self.lr = 0.01
         self.batch_size = 1
         self.number_of_updates = 0
+        self.qs_dict = None
 
     def forward(self, x, caching='replace'):
         self.co=x
@@ -290,8 +291,9 @@ class MyNN:
         dict = self.nn_to_dict()
         pickle.dump(dict, open(path, 'wb'))
 
-    def load(self, path):
-        dict = pickle.load(open(path, 'rb'))
+    def load(self, path, dict=None):
+        if dict is None:
+            dict = pickle.load(open(path, 'rb'))
         self.body = dict['body']
         self.grads = dict['grads']
         self.current_size = dict['current_size']
@@ -312,6 +314,33 @@ class MyNN:
             self.s = dict['s']
             self.beta2 = dict['beta2']
             self.epsilon = dict['epsilon']
+
+    def quick_save(self):
+        self.qs_dict = self.nn_to_dict()
+
+    def quick_load(self):
+        dict = self.qs_dict
+        self.body = dict['body']
+        self.grads = dict['grads']
+        self.current_size = dict['current_size']
+        self.n_of_layers=dict['n_of_layers']
+        self.f_script = dict['f_script']
+        self.f_script_nc = dict['f_script_nc']
+        self.b_script = dict['b_script']
+        self.lr = dict['lr']
+        self.number_of_updates = dict['n_of_updates']
+        self.cost = dict['cost']
+        self.optimizer = dict['optimizer']
+        if self.optimizer == 'GDwM':
+            self.v = dict['v']
+            self.beta = dict['beta']
+        elif self.optimizer == 'Adam':
+            self.v = dict['v']
+            self.beta = dict['beta']
+            self.s = dict['s']
+            self.beta2 = dict['beta2']
+            self.epsilon = dict['epsilon']
+
 
 
 class Scaler():
@@ -344,12 +373,16 @@ class Scaler():
     def get(self):
         return self.means, self.vars+0.1
 
-    def save(self, path='scaler.mnnd'):
+    def save(self, path='scaler.mnnd', to_tupl=False):
         tupl = (self.vars, self.means, self.m)
-        pickle.dump(tupl, open(path, 'wb'))
+        if to_tupl:
+            return tupl
+        else:
+            pickle.dump(tupl, open(path, 'wb'))
 
-    def load(self, path):
-        tupl = pickle.load(open(path, 'rb'))
+    def load(self, path, tupl=None):
+        if tupl is None:
+            tupl = pickle.load(open(path, 'rb'))
         self.vars = tupl[0]
         self.means = tupl[1]
         self.m = tupl[2]
