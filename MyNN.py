@@ -79,7 +79,7 @@ class MyNN:
             grads = np.divide(d['means'] - d['actions'], d['vars']) * d['adv']*d['prob_exp']
             grads += np.divide(d['means'] - d['old_means'], d['vars']) * d['beta']
             if d['DKL'] - 2 * d['DKL_targ'] > 0:
-                grads += np.divide(d['means'] - d['old_means'], d['vars']) * d['beta']* d['eta']*(2*d['DKL']-4*d['DKL_targ'])
+                grads += np.divide(d['means'] - d['old_means'], d['vars']) * d['eta']*(2*d['DKL']-4*d['DKL_targ'])
         return grads
 
 
@@ -323,7 +323,7 @@ class MyNN:
         self.body = dict['body']
         self.grads = dict['grads']
         self.current_size = dict['current_size']
-        self.n_of_layers=dict['n_of_layers']
+        self.n_of_layers = dict['n_of_layers']
         self.f_script = dict['f_script']
         self.f_script_nc = dict['f_script_nc']
         self.b_script = dict['b_script']
